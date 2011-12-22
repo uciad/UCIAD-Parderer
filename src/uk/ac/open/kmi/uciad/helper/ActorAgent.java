@@ -1,7 +1,9 @@
 package uk.ac.open.kmi.uciad.helper;
-//TEst comment
+
 public class ActorAgent {
 	private String actorAgentId;
+        
+        private String test = "test";
 
 	public void setActorAgentId(String actorAgentId) {
 		this.actorAgentId = actorAgentId;
