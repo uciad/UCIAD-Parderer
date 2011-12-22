@@ -84,6 +84,7 @@ public class ApacheLogParser implements LogParser {
 				if (!matcher.matches() || NUM_FIELDS != matcher.groupCount()) {
 					System.err.println("Bad log entry (or problem with RE?):");
 					System.err.println(str);
+                                        continue;
 				}
 				Trace newTraceEntry = new Trace();
 				try {

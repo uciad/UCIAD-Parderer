@@ -39,6 +39,7 @@ import uk.ac.open.kmi.uciad.util.UCIADRepositoryManager;
 import com.hp.hpl.jena.rdf.model.Literal;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.vocabulary.RDF;
 import java.text.SimpleDateFormat;
@@ -49,8 +50,9 @@ import uk.ac.open.kmi.uciad.util.DateUtils;
 public class ApacheLogRDFRenderer implements RDFRenderer {
 	boolean createNewModel = false;
 	int count = 1;
+        int numberOfModels = 1;
 	String serverName = System.getProperty("serverName")+"/"; 
-	Model apacheTraceModel = ModelFactory.createDefaultModel();	
+	Model apacheTraceModel = ModelFactory.createDefaultModel();
 	Trace traceEntry = null;
 	Vector<String[]> resultVec = null;
 	Date dateToParseLogFor = null;
@@ -71,12 +73,14 @@ public class ApacheLogRDFRenderer implements RDFRenderer {
 		} catch (QueryEvaluationException e) {
 			e.printStackTrace();
 		}
-		Iterator<Trace> itrTraceVector = traceVector.iterator();		
+		Iterator<Trace> itrTraceVector = traceVector.iterator();
+                UCIADRepositoryManager.clearDestDir("data/");
 		System.out.println("Starting RDF rendering...");		
 		while (itrTraceVector.hasNext()){			
 			traceEntry = itrTraceVector.next();
-			if (createNewModel){
+			if (createNewModel){                                
 				apacheTraceModel = ModelFactory.createDefaultModel();
+                                createNewModel = false;
 			}
 			apacheTraceModel.createResource(NameSpace.TRACEBASE+serverName+traceEntry.getTraceID())
 				.addProperty(RDF.type, apacheTraceModel.createResource(NameSpace.TRACE+"Trace"));
@@ -84,7 +88,8 @@ public class ApacheLogRDFRenderer implements RDFRenderer {
 			//System.out.println(traceEntry.getTraceID());			
 			apacheTraceModel.createResource(NameSpace.TRACEBASE+serverName+traceEntry.getTraceID())				
 				.addProperty(apacheTraceModel.createProperty(NameSpace.TRACE, "hasPageInvolved"), 
-							 renderPage(traceEntry.getPageInvolved()));
+							 //renderPage(traceEntry.getPageInvolved()));
+                                apacheTraceModel.createResource(renderPage(traceEntry.getPageInvolved()).getURI()));
 			
 			//PARAMETER VALUE
 			if (traceEntry.getParameterValues() != null){
@@ -131,61 +136,60 @@ public class ApacheLogRDFRenderer implements RDFRenderer {
 			}			
 			count++;
 			itrTraceVector.remove();
-			if (count >= 300000)
+			if (count >= 5000)
 			{
-				writeTheModel(dateToRenderLogFor);
+				writeTheModel(dateToRenderLogFor, true);
 			}
-			else if (count <= 300000 && traceVector.size() == 0)
+			else if (count <= 5000 && traceVector.size() == 0)
 			{
-				writeTheModel(dateToRenderLogFor);
+				writeTheModel(dateToRenderLogFor, false);
 			}
 		}
 		
 		
 	}
 
-	private void writeTheModel(Date dateToRenderLogFor) {
-		//FINAL MODEL
-		apacheTraceModel.setNsPrefix("trace", NameSpace.TRACE);
-		apacheTraceModel.setNsPrefix("traceactor", NameSpace.TRACEACTOR);
-		apacheTraceModel.setNsPrefix("sitemap", NameSpace.SITEMAP);
-		apacheTraceModel.setNsPrefix("rdf", NameSpace.RDF);
-		
-        String fileName = ("parsedLog.rdf");
-        OutputStream out = null;
-        File tempFile = new File("data/" + fileName);
-        try {
-			out = new FileOutputStream(tempFile);				
-			apacheTraceModel.write(out, "RDF/XML");	            
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}finally {
-			try {
-				out.flush();
-				out.close();				
-				
-				//UCIADRepositoryManager.add("data/" + fileName, System.getProperty("context"));
-				apacheTraceModel.close();
-				//System.out.println(count+" Log entries have been rendered in RDF in the UCIAD repository.");
-                                if (count > 1)
-                                {
-                                    System.out.println(count+" Log entries have been parsed into RDF...");
-                                    DataCompressor.zip("parsedLog.rdf", System.getProperty("zippedFileOutPutDir")+
-                                        "/parsedLog_"+dateFormatForParsedZipFile.format(dateToRenderLogFor)+".zip");
-                                }
-                                else
-                                {
-                                    System.out.println("No entries have been found to parse into RDF...");
-                                }
-				
-				//DataCompressor.unZip("data/parsedLog.zip");
-				createNewModel = true;
-				count = 1;
-			} catch (IOException e) {
-				e.printStackTrace();
-			}			
-		}
-	}
+	private void writeTheModel(Date dateToRenderLogFor, boolean moreToCome) {
+            //FINAL MODEL
+            apacheTraceModel.setNsPrefix("trace", NameSpace.TRACE);
+            apacheTraceModel.setNsPrefix("traceactor", NameSpace.TRACEACTOR);
+            apacheTraceModel.setNsPrefix("sitemap", NameSpace.SITEMAP);
+            apacheTraceModel.setNsPrefix("rdf", NameSpace.RDF);
+
+            String fileName = ("parsedLog"+numberOfModels+".rdf");
+            OutputStream out = null;
+            File tempFile = new File("data/" + fileName);
+            try {
+                out = new FileOutputStream(tempFile);
+                apacheTraceModel.write(out, "RDF/XML");
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    out.flush();
+                    out.close();
+
+                    //UCIADRepositoryManager.add("data/" + fileName, System.getProperty("context"));
+                    apacheTraceModel.close();                    
+                    //System.out.println(count+" Log entries have been rendered in RDF in the UCIAD repository.");
+                    if (count > 1) {
+                        System.out.println(count + " Log entries have been parsed into RDF...");
+                        if (!moreToCome)
+                        DataCompressor.zip("data/", System.getProperty("zippedFileOutPutDir")
+                                + "/parsedLog_" + dateFormatForParsedZipFile.format(dateToRenderLogFor) + ".zip");
+                    } else {
+                        System.out.println("No entries have been found to parse into RDF...");
+                    }
+
+                    //DataCompressor.unZip("data/parsedLog.zip");
+                    createNewModel = true;
+                    numberOfModels++;
+                    count = 1;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
 
 	@Override
 	public Resource renderActor(Actor actor) {
@@ -316,12 +320,13 @@ public class ApacheLogRDFRenderer implements RDFRenderer {
 	public Resource renderPage(Page page) {
 		Resource resource = null;
 		try {
-			resource = apacheTraceModel.createResource(NameSpace.PAGEBASE+MD5Generator.getMD5(page.getPageURL()+page.getOnServer()))
+			resource = apacheTraceModel.createResource(NameSpace.PAGEBASE+MD5Generator.getMD5(page.getPageURL() + page.getOnServer()))
 											.addProperty(apacheTraceModel.createProperty(NameSpace.SITEMAP,"url"), 
 														 apacheTraceModel.createTypedLiteral(page.getPageURL()));
+                        
 			resource.addProperty(apacheTraceModel.createProperty(NameSpace.SITEMAP,"onServer"), 
-                                            apacheTraceModel.createResource(page.getOnServer()));
-                        resource.addProperty(RDF.type, apacheTraceModel.createResource(NameSpace.SITEMAP+"WebPage"));
+                                            apacheTraceModel.createResource(page.getOnServer()));                        
+                        resource.addProperty(RDF.type, apacheTraceModel.createResource(NameSpace.SITEMAP + "WebPage"));
                         
 			
 			Pattern pattern = null;
@@ -376,8 +381,6 @@ public class ApacheLogRDFRenderer implements RDFRenderer {
 		}
 		return resultVec;
 	}
-	
-	
 
 	@Override
 	public Resource renderAction(HTTPAction traceAction) {	

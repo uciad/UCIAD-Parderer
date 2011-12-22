@@ -6,28 +6,33 @@ import java.util.zip.*;
 
 public class DataCompressor {
    static final int BUFFER = 2048;
-   public static void zip (String intputFileName, String outputFilePath) {
+   public static void zip (String sourceDirectory, String outputFilePath) {
       try {
          BufferedInputStream origin = null;
-         FileOutputStream dest = new 
-           FileOutputStream(outputFilePath);
-         ZipOutputStream out = new ZipOutputStream(new 
-           BufferedOutputStream(dest));
+         FileOutputStream dest = new FileOutputStream(outputFilePath);
+         ZipOutputStream out = new ZipOutputStream(new BufferedOutputStream(dest));
          //out.setMethod(ZipOutputStream.DEFLATED);
          byte data[] = new byte[BUFFER];
          // get a list of files from current directory
-         File fileToZip = new File("data/"+intputFileName);
-         //String files[] = f.list();
-         FileInputStream fileInPutStream = new  FileInputStream(fileToZip);
-         origin = new BufferedInputStream(fileInPutStream, BUFFER);
-         ZipEntry entry = new ZipEntry(fileToZip.getName());
-            out.putNextEntry(entry);
-            int count;
-            while((count = origin.read(data, 0, 
-              BUFFER)) != -1) {
-               out.write(data, 0, count);
-            }
-            origin.close();
+         File sourceDir = new File(sourceDirectory);
+         File [] listOfFiles = sourceDir.listFiles();
+         for (int i = 0; i < listOfFiles.length; i++)
+         {
+             File fileToZip = new File(sourceDirectory+listOfFiles[i].getName());
+             //String files[] = f.list();
+             if (!fileToZip.getName().endsWith(".zip")){
+                 FileInputStream fileInPutStream = new  FileInputStream(fileToZip);
+                 origin = new BufferedInputStream(fileInPutStream, BUFFER);
+                 ZipEntry entry = new ZipEntry(fileToZip.getName());
+                 out.putNextEntry(entry);
+                 int count;
+                 while((count = origin.read(data, 0, 
+                   BUFFER)) != -1) {
+                   out.write(data, 0, count);
+                 }
+                 origin.close();
+             }             
+         }         
         
          out.close();
       } catch(Exception e) {

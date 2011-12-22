@@ -56,11 +56,13 @@ public class UCIADRepositoryManager {
 			RepositoryConnection con = null;
 			con = uciadRepository.getConnection();
 			try {
+                                con.setAutoCommit(false);
 				File file = new File(filePath);
 				ValueFactory valFactory = uciadRepository.getValueFactory();
 
 				URI superContext = valFactory.createURI(contextURI);
 				con.add(file, NameSpace.UCIAD, RDFFormat.RDFXML, superContext);
+                                con.commit();
 
 			} catch (IOException ex) {
 				ex.printStackTrace();
@@ -105,7 +107,7 @@ public class UCIADRepositoryManager {
 
             try {
                 URI superContext = valFactory.createURI(superContextStr);
-
+                
                 tempRepCon.add(new File(filePath), null, RDFFormat.RDFXML, tempContext);
                 RepositoryResult<Statement> stmtsToRemove = tempRepCon.getStatements(null, null, null, true, tempContext);
                 List<Statement> stmtsToRemoveList = Iterations.addAll(stmtsToRemove, new ArrayList<Statement>());
@@ -144,4 +146,18 @@ public class UCIADRepositoryManager {
 		
 		return result;
 	}
+    /**
+     * This function clears the directory containing previously rendered RDF files.
+     * @param destDirPath 
+     */        
+    public static void clearDestDir(String destDirPath) {
+        File sourceDir = new File(destDirPath);
+        File[] listOfFiles = sourceDir.listFiles();
+        for (int i = 0; i < listOfFiles.length; i++) {
+            File file = new File(destDirPath + listOfFiles[i].getName());
+            if (file.exists()) {
+                file.delete();
+            }
+        }
+    }
 }
